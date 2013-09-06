@@ -22,6 +22,35 @@ module Autmt = struct
 
   let patch e = fun (Dan_arr (s,c):arc) -> Ord_arr (s, e, c);;
 
+  let op_oper opr new_st =
+    let fg = Option.value (Stack.pop fg_st)
+      ~default:{start=0;edge=[];dan_edge=[]} in
+    match opr with
+    | Expr.Meta_char '*' -> 
+      Stack.push fg_st {start = new_st;
+			edge = Ord_arr (new_st, fg.start, epsilon)
+			:: (fg.edge @ (List.map ~f:(patch new_st) fg.dan_edge));
+			dan_edge = Dan_arr (new_st, epsilon)::[]}
+
+    | Expr.Meta_char '+' ->
+      Stack.push fg_st {start = fg.start;
+			edge = Ord_arr (new_st, fg.start, epsilon)
+			:: (fg.edge @ (List.map ~f:(patch new_st) fg.dan_edge));
+			dan_edge = Dan_arr (new_st, epsilon)::[]}
+
+    | Expr.Meta_char '?' ->
+      Stack.push fg_st {start = new_st;
+			edge = Ord_arr (new_st, fg.start, epsilon) :: fg.edge;
+			dan_edge = Dan_arr (new_st, epsilon) :: fg.dan_edge}
+
+    | Expr.Meta_char '|' ->
+      let fg1 = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in 
+      Stack.push fg_st {start = new_st;
+			edge = Ord_arr (new_st, fg.start, epsilon)
+			:: Ord_arr (new_st, fg1.start, epsilon)
+			:: fg.edge @ fg1.edge;
+			dan_edge = fg.dan_edge @ fg1.dan_edge};;
+
   let push_op operator state_id =
     let id = ref state_id in  
 
@@ -30,38 +59,21 @@ module Autmt = struct
 						~default:(Expr.Meta_char '|'))) ~default:0
       && Option.value (Stack.top op_st) ~default:(Expr.Meta_char '|') <> (Expr.Meta_char '(') do
 
-      let fg = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
-      match Option.value (Stack.pop op_st) ~default:(Expr.Meta_char '|') with
-      | Expr.Meta_char '*' -> 
-	Stack.push fg_st {start = !id;
-		    edge = Ord_arr (!id, fg.start, epsilon) :: (fg.edge @ (List.map ~f:(patch !id) fg.dan_edge));
-		    dan_edge = Dan_arr (!id, epsilon)::[]}
+      op_oper (Option.value (Stack.pop op_st) ~default:(Expr.Meta_char '|')) !id;
 
-      | Expr.Meta_char '+' ->
-	Stack.push fg_st {start = fg.start;
-		    edge = Ord_arr (!id, fg.start, epsilon) :: (fg.edge @ (List.map ~f:(patch !id) fg.dan_edge));
-		    dan_edge = Dan_arr (!id, epsilon)::[]}
-
-      | Expr.Meta_char '?' ->
-	Stack.push fg_st {start = !id;
-		    edge = Ord_arr (!id, fg.start, epsilon) :: fg.edge;
-		    dan_edge = Dan_arr (!id, epsilon) :: fg.dan_edge}
-
-      | Expr.Meta_char '|' ->
-	let fg1 = Option.value (Stack.pop fg_st)
-	~default:{start=0;edge=[];dan_edge=[]} in 
-	Stack.push fg_st {start = !id;
-		    edge = Ord_arr (!id, fg.start, epsilon) :: Ord_arr
-	(!id, fg1.start, epsilon) :: fg.edge @ fg1.edge;
-		    dan_edge = fg.dan_edge @ fg1.dan_edge};
-	incr id;
+      incr id;
     done;
 
-    if operator = (Meta_char ')') then begin
+    if operator = (Expr.Meta_char ')') then begin
       Stack.pop op_st;
       ();
     end
-    else Stack.push op_st operator;
+    else if operator = (Expr.Meta_char '|') then
+      Stack.push op_st operator
+    else begin
+      op_oper operator !id;
+      incr id;
+    end;
     !id;;
 
   let rec compile_rec exp state_id concat =
@@ -83,17 +95,23 @@ module Autmt = struct
 	compile_rec tail (state_id + 1) true;;
 
   let compile exp =
-    let acc_state = compile_rec exp init_state false in
+    let last_state = ref (compile_rec exp init_state false) in
+    while not (Stack.is_empty op_st) do
+      op_oper (Option.value (Stack.pop op_st) ~default:(Expr.Meta_char '|')) !last_state;
+      incr last_state
+    done;     
+
     while Stack.length fg_st >= 2 do
       let fg1 = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
       let fg0 = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
       Stack.push fg_st {start = fg0.start;
-		  edge = (List.map ~f:(patch fg1.start) fg0.dan_edge)
-    @ fg1.edge @ fg0.edge;
-		  dan_edge = fg1.dan_edge}
+			edge = (List.map ~f:(patch fg1.start) fg0.dan_edge)
+			@ fg1.edge @ fg0.edge;
+			dan_edge = fg1.dan_edge}
     done;
-    let x = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
-    acc_state, {x with edge = (List.map ~f:(patch acc_state)
+    let x = Option.value (Stack.pop fg_st)
+    ~default:{start=0;edge=[];dan_edge=[]} in
+    !last_state, {x with edge = (List.map ~f:(patch !last_state)
 				 x.dan_edge) @ x.edge;
       dan_edge = []};;
 end;;
