@@ -1,9 +1,9 @@
-open Cor.Std;;
+open Core.Std;;
 
 module Expr = struct
 
   module T = struct
-    type t = Text_char of char | Meta_char of char with sexp;;
+    type t = Text_char of char | Meta_char of char with sexp
     let compare = compare
     let hash = Hashtbl.hash
   end;;

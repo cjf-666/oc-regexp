@@ -1,0 +1,13 @@
+
+OASISFormat: 0.3
+Name:        rep
+Version:     0.1
+Synopsis:    ocaml regular expression
+Authors:     Chingfan Tsao
+License:     GPL-3
+
+Library rep
+  Path:       .
+  BuildTools: ocamlbuild, camlp4o
+  Modules:    Expr, Autmt, Rep
+  BuildDepends: sexplib.syntax, core, threads
