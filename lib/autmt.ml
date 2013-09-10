@@ -75,22 +75,22 @@ let push_op operator state_id =
   end;
   !id;;
 
-let rec compile_rec exp state_id concat =
-  match exp with
-  | [] -> state_id
-  | (Expr.Meta_char c) as ch :: tail ->
+let rec compile_rec exp state_id able_concat =
+  match able_concat, exp with
+  | _, [] -> state_id
+  | _, ((Expr.Meta_char c) as ch :: tail) ->
     compile_rec tail (push_op ch state_id) false
-  | (Expr.Text_char c) as ch :: tail  ->
-    if concat then begin
-      let lst_fg = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
-      Stack.push fg_st {lst_fg with
-	edge = (List.map ~f:(patch state_id) lst_fg.dan_edge) @ lst_fg.edge
-	;dan_edge = Dan_arr (state_id, c)::[]}
-    end
-    else
-      Stack.push fg_st {start = state_id;
-			edge = [];
-			dan_edge = Dan_arr (state_id, c)::[]};
+  | true, ((Expr.Text_char c) :: ((Expr.Text_char _) :: tl as tail))  ->
+    let lst_fg = Option.value (Stack.pop fg_st) ~default:{start=0;edge=[];dan_edge=[]} in
+    Stack.push fg_st {lst_fg with
+      edge = (List.map ~f:(patch state_id) lst_fg.dan_edge) @ lst_fg.edge;
+      dan_edge = Dan_arr (state_id, c)::[]};
+      compile_rec tail (state_id + 1) true
+    
+  | _, ((Expr.Text_char c) :: tail) ->
+    Stack.push fg_st {start = state_id;
+		      edge = [];
+		      dan_edge = Dan_arr (state_id, c)::[]};
     compile_rec tail (state_id + 1) true;;
 
 let compile exp =

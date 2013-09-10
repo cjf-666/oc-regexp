@@ -1,4 +1,3 @@
-
 OASISFormat: 0.3
 Name:        rep
 Version:     0.1
@@ -7,7 +6,24 @@ Authors:     Chingfan Tsao
 License:     GPL-3
 
 Library rep
-  Path:       .
-  BuildTools: ocamlbuild, camlp4o
-  Modules:    Expr, Autmt, Rep
-  BuildDepends: sexplib.syntax, core, threads
+  Path:               .                      # path of the files
+  BuildTools:         ocamlbuild, camlp4o    
+  InternalModules:    Expr, Autmt            # modules not exported
+  Modules:            Rep
+  BuildDepends:       sexplib.syntax, core, threads
+
+Executable run_test
+  Path:               rep_test
+  MainIs:             run_test.ml
+  Build$:             flag(tests)            # conditional value "$:"
+  BuildTools:         ocamlbuild
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       rep
+
+Test test_runner
+  Run$:               flag(tests)
+  Command:            $run_test
+  WorkingDirectory:   rep_test
+
