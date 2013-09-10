@@ -6,14 +6,14 @@ Authors:     Chingfan Tsao
 License:     GPL-3
 
 Library rep
-  Path:               .                      # path of the files
+  Path:               lib                      # path of the files
   BuildTools:         ocamlbuild, camlp4o    
   InternalModules:    Expr, Autmt            # modules not exported
   Modules:            Rep
   BuildDepends:       sexplib.syntax, core, threads
 
 Executable run_test
-  Path:               rep_test
+  Path:               lib_test
   MainIs:             run_test.ml
   Build$:             flag(tests)            # conditional value "$:"
   BuildTools:         ocamlbuild
@@ -25,5 +25,5 @@ Executable run_test
 Test test_runner
   Run$:               flag(tests)
   Command:            $run_test
-  WorkingDirectory:   rep_test
+  WorkingDirectory:   lib_test
 

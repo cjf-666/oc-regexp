@@ -48,7 +48,9 @@ let op_oper opr new_st =
 		      edge = Ord_arr (new_st, fg.start, epsilon)
 		      :: Ord_arr (new_st, fg1.start, epsilon)
 		      :: fg.edge @ fg1.edge;
-		      dan_edge = fg.dan_edge @ fg1.dan_edge};;
+		      dan_edge = fg.dan_edge @ fg1.dan_edge}
+  | Expr.Meta_char '(' ->
+    Stack.push op_st (Expr.Meta_char '(');;
 
 let push_op operator state_id =
   let id = ref state_id in  
